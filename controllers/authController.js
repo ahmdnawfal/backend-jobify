@@ -2,10 +2,13 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 import { StatusCodes } from 'http-status-codes';
 import User from '../models/userModel.js';
+import RefreshToken from '../models/refreshTokenModel.js';
 import { comparePassword, hashPassword } from '../utils/passwordUtils.js';
 import { UnauthenticatedError } from '../errors/customError.js';
 import { createJWT } from '../utils/tokenUtils.js';
+import jwt from 'jsonwebtoken';
 import 'express-async-errors';
+import mongoose from 'mongoose';
 
 export const register = async (req, res) => {
   const isFirstAccount = (await User.countDocuments()) === 0;
@@ -30,6 +33,14 @@ export const login = async (req, res) => {
   if (!isValidUser) throw new UnauthenticatedError('invalid credentials');
 
   const token = createJWT({ userId: user._id, role: user.role });
+  const refreshToken = jwt.sign(
+    { userId: user._id, role: user.role },
+    'RefreshToken'
+  );
+  const newRefreshToken = new RefreshToken({ token: refreshToken });
+  await newRefreshToken.save();
+
+  const accessTokenExpiration = jwt.decode(token).exp;
 
   const oneDay = 1000 * 60 * 60 * 24;
 
@@ -41,9 +52,40 @@ export const login = async (req, res) => {
 
   const userWithoutPassword = user.toJSON();
 
-  return res
-    .status(StatusCodes.OK)
-    .json({ msg: 'SUCCESS', token, user: userWithoutPassword });
+  return res.status(StatusCodes.OK).json({
+    msg: 'SUCCESS',
+    token,
+    refreshToken,
+    accessTokenExpiration,
+    user: userWithoutPassword,
+  });
+};
+
+export const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  const isValidRefreshToken = await RefreshToken.exists({
+    token: refreshToken,
+  });
+
+  if (!isValidRefreshToken)
+    throw new UnauthenticatedError('invalid refresh token');
+
+  jwt.verify(refreshToken, 'RefreshToken', (err, user) => {
+    if (err) {
+      throw new UnauthenticatedError('invalid refresh token');
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '15d' }
+    );
+
+    const accessTokenExpiration = jwt.decode(token).exp;
+
+    res.json({ token, refreshToken, accessTokenExpiration });
+  });
 };
 
 export const logout = (req, res) => {
