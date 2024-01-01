@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export const createJWT = (payload) => {
-  const expirationTime = 15;
+  const expirationTime = 60 * 60;
 
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: expirationTime,
