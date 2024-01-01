@@ -8,7 +8,6 @@ import { UnauthenticatedError } from '../errors/customError.js';
 import { createJWT } from '../utils/tokenUtils.js';
 import jwt from 'jsonwebtoken';
 import 'express-async-errors';
-import mongoose from 'mongoose';
 
 export const register = async (req, res) => {
   const isFirstAccount = (await User.countDocuments()) === 0;
@@ -76,10 +75,12 @@ export const refreshToken = async (req, res) => {
       throw new UnauthenticatedError('invalid refresh token');
     }
 
+    const expirationTime = Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60;
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '15d' }
+      { expiresIn: expirationTime }
     );
 
     const accessTokenExpiration = jwt.decode(token).exp;
