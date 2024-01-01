@@ -75,10 +75,10 @@ export const refreshToken = async (req, res) => {
       throw new UnauthenticatedError('invalid refresh token');
     }
 
-    const expirationTime = Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60;
+    const expirationTime = 60 * 60 * 24 * 15;
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user.userId, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: expirationTime }
     );

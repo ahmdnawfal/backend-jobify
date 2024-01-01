@@ -4,10 +4,10 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export const createJWT = (payload) => {
-  const oneDay = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+  const expirationTime = 15;
 
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: oneDay,
+    expiresIn: expirationTime,
   });
 
   return token;
